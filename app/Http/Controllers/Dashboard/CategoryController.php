@@ -3,19 +3,26 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Models\Category;
-use Illuminate\Http\Request;
-use Illuminate\Support\Str;
+use App\Services\CategoryService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CategoryRequest;
 
 class CategoryController extends Controller
 {
+    public function __construct(private CategoryService $categoryService)
+    {
+        $this->middleware('permission:view_categories')->only(['index', 'show']);
+        $this->middleware('permission:create_categories')->only(['create', 'store']);
+        $this->middleware('permission:edit_categories')->only(['edit', 'update']);
+        $this->middleware('permission:delete_categories')->only(['destroy']);
+    }
+
     /**
      * Display a listing of the categories
      */
     public function index()
     {
-        $categories = Category::withCount('products')->paginate(10);
+        $categories = $this->categoryService->getAllCategoriesWithProductCount(10);
         return view('dashboard.categories.index', compact('categories'));
     }
 
@@ -24,7 +31,7 @@ class CategoryController extends Controller
      */
     public function create()
     {
-        $categories = Category::all();
+        $categories = $this->categoryService->getAllCategories();
         return view('dashboard.categories.create', compact('categories'));
     }
 
@@ -33,12 +40,10 @@ class CategoryController extends Controller
      */
     public function store(CategoryRequest $request)
     {
-        $data = $request->validated();
-        $data['slug'] = Str::slug($data['name']);
+        $category = $this->categoryService->createCategory($request->validated());
 
-        Category::create($data);
         return redirect()->route('categories.index')
-            ->with('success', 'Category created successfully.');
+            ->with('success', 'Category "' . $category->name . '" created successfully.');
     }
 
     /**
@@ -46,7 +51,7 @@ class CategoryController extends Controller
      */
     public function show(Category $category)
     {
-        $category->loadCount('products')->load('products');
+        $category = $this->categoryService->getCategoryWithProducts($category);
         return view('dashboard.categories.show', compact('category'));
     }
 
@@ -55,7 +60,7 @@ class CategoryController extends Controller
      */
     public function edit(Category $category)
     {
-        $categories = Category::where('id', '!=', $category->id)->get();
+        $categories = $this->categoryService->getCategoriesExcept($category->id);
         return view('dashboard.categories.edit', compact('category', 'categories'));
     }
 
@@ -64,12 +69,10 @@ class CategoryController extends Controller
      */
     public function update(CategoryRequest $request, Category $category)
     {
-        $data = $request->validated();
-        $data['slug'] = Str::slug($data['name']);
+        $updatedCategory = $this->categoryService->updateCategory($category, $request->validated());
 
-        $category->update($data);
         return redirect()->route('categories.index')
-            ->with('success', 'Category updated successfully.');
+            ->with('success', 'Category "' . $updatedCategory->name . '" updated successfully.');
     }
 
     /**
@@ -77,9 +80,14 @@ class CategoryController extends Controller
      */
     public function destroy(Category $category)
     {
-        $category->delete();
+        $result = $this->categoryService->deleteCategory($category);
 
-        return redirect()->route('categories.index')
-            ->with('success', 'Category deleted successfully.');
+        if ($result['success']) {
+            return redirect()->route('categories.index')
+                ->with('success', $result['message']);
+        }
+
+        return redirect()->back()
+            ->with('error', $result['message']);
     }
 }

@@ -28,7 +28,6 @@
             <thead class="table-dark">
                 <tr>
                     <th>ID</th>
-                    <th>Image</th>
                     <th>Name</th>
                     <th>SKU</th>
                     <th>Category</th>
@@ -42,15 +41,6 @@
                 @forelse($products as $product)
                     <tr id="product-{{ $product->id }}">
                         <td>{{ $product->id }}</td>
-                        <td>
-                            @if ($product->has_image)
-                                <img src="{{ $product->image_url }}" alt="{{ $product->name }}"
-                                    class="img-fluid rounded shadow" style="max-height: 40px;">
-                            @else
-                                <img src="{{ asset('images/default-product.jpg') }}" alt="Default Product Image"
-                                    class="img-fluid rounded shadow" style="max-height: 40px;">
-                            @endif
-                        </td>
                         <td>{{ $product->name }}</td>
                         <td>{{ $product->sku ?? 'N/A' }}</td>
                         <td>{{ $product->category->name ?? 'No Category' }}</td>
